@@ -58,8 +58,9 @@ echo "GOOGLE_API_KEY=your_gemini_api_key_here" > backend/.env
 cd backend
 uvicorn main:app --reload
 ```
+Open the live server of the index.html.
 
-Open **http://localhost:8000** in your browser.
+Make sure to add this **http://localhost:8000** to the url in script.js file.
 
 ---
 
