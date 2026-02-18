@@ -25,7 +25,7 @@ RoleReady is an AI-powered resume automation tool that generates ATS-optimized, 
 
 - **Python 3.10+**
 - **pdflatex** (TeX Live) — for LaTeX → PDF compilation
-- **Google Gemini API Key** — [Get one here](https://ai.google.dev/)
+- **Google Gemini API Key** — [Get one here](https://aistudio.google.com/api-keys/)
 
 ### Installation
 
