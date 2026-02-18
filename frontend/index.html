@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resume Automation - Upload JD</title>
+    <title>RoleReady — AI Resume Tailor</title>
     <link rel="stylesheet" href="static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -12,85 +12,320 @@
 <body>
     <div class="container">
         <header>
-            <div class="logo-mark">JD</div>
-            <h1>Job Description Analyzer</h1>
-            <p>Upload your resume &amp; paste a job description — we'll generate a tailored resume for you.</p>
+            <div class="logo-mark">RR</div>
+            <h1>RoleReady</h1>
+            <p>Choose how you'd like to get started.</p>
         </header>
 
         <main>
-            <div class="card">
-                <form id="uploadForm">
-                    <!-- PDF Upload -->
-                    <div class="form-group">
-                        <label for="resumeFile">Your Current Resume (PDF)</label>
-                        <div class="file-drop-zone" id="dropZone">
-                            <input type="file" id="resumeFile" name="resumeFile" accept=".pdf" required>
-                            <div class="drop-content">
-                                <div class="drop-icon">
-                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                        <polyline points="17 8 12 3 7 8"></polyline>
-                                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                                    </svg>
-                                </div>
-                                <p class="drop-text">Drag &amp; drop your PDF here, or <span
-                                        class="browse-link">browse</span></p>
-                                <p class="drop-hint">PDF files only, max 10 MB</p>
-                            </div>
-                            <div class="file-preview" id="filePreview" style="display:none;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                </svg>
-                                <span id="fileName"></span>
-                                <button type="button" class="remove-file" id="removeFile">&times;</button>
-                            </div>
-                        </div>
-                        <div id="file-error" class="error-message"></div>
-                    </div>
-
-                    <!-- Job Description -->
-                    <div class="form-group">
-                        <label for="jdText">Job Description</label>
-                        <textarea id="jdText" name="jdText" placeholder="Paste the full job description here..."
-                            required></textarea>
-                        <div id="jd-error" class="error-message"></div>
-                    </div>
-
-                    <button type="submit" class="btn-primary" id="submitBtn">
-                        <span class="btn-icon">&#10148;</span> Generate Tailored Resume
+            <!-- ═══════════ VIEW 1: Mode Selector (Landing) ═══════════ -->
+            <div id="viewLanding" class="view">
+                <div class="mode-selector">
+                    <button type="button" class="mode-btn" id="btnModeUpdate" data-mode="update">
+                        <span class="mode-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                        </span>
+                        <span class="mode-label">Update Existing Resume</span>
+                        <span class="mode-desc">Upload your current resume PDF &amp; a job description — we'll tailor it
+                            for you.</span>
                     </button>
-                </form>
+                    <button type="button" class="mode-btn" id="btnModeScratch" data-mode="scratch">
+                        <span class="mode-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </span>
+                        <span class="mode-label">Build from Scratch</span>
+                        <span class="mode-desc">Fill in your details manually and we'll craft a brand-new resume for
+                            you.</span>
+                    </button>
+                </div>
             </div>
 
-            <!-- Progress indicator -->
+            <!-- ═══════════ VIEW 2: Update Existing ═══════════ -->
+            <div id="viewUpdate" class="view hidden">
+                <button type="button" class="back-btn" id="backFromUpdate">&larr; Back</button>
+                <div class="card">
+                    <h2 class="card-title">Update Your Resume</h2>
+                    <p class="card-subtitle">Upload your existing resume and paste the job description.</p>
+                    <form id="uploadForm">
+                        <input type="hidden" name="mode" value="update">
+                        <!-- PDF Upload -->
+                        <div class="form-group">
+                            <label for="resumeFile">Your Current Resume (PDF)</label>
+                            <div class="file-drop-zone" id="dropZone">
+                                <input type="file" id="resumeFile" name="resumeFile" accept=".pdf" required>
+                                <div class="drop-content">
+                                    <div class="drop-icon">
+                                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <p class="drop-text">Drag &amp; drop your PDF here, or <span
+                                            class="browse-link">browse</span></p>
+                                    <p class="drop-hint">PDF files only, max 10 MB</p>
+                                </div>
+                                <div class="file-preview" id="filePreview" style="display:none;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z">
+                                        </path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    <span id="fileName"></span>
+                                    <button type="button" class="remove-file" id="removeFile">&times;</button>
+                                </div>
+                            </div>
+                            <div id="file-error" class="error-message"></div>
+                        </div>
+                        <!-- Job Description -->
+                        <div class="form-group">
+                            <label for="jdText">Job Description</label>
+                            <textarea id="jdText" name="jdText" placeholder="Paste the full job description here..."
+                                required></textarea>
+                            <div id="jd-error" class="error-message"></div>
+                        </div>
+                        <button type="submit" class="btn-primary" id="submitBtn">
+                            <span class="btn-icon">&#10148;</span> Generate Tailored Resume
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ═══════════ VIEW 3: Build from Scratch ═══════════ -->
+            <div id="viewScratch" class="view hidden">
+                <button type="button" class="back-btn" id="backFromScratch">&larr; Back</button>
+                <div class="card">
+                    <h2 class="card-title">Build Your Resume</h2>
+                    <p class="card-subtitle">Fill in your details below — every field helps build a stronger resume.</p>
+                    <form id="scratchForm">
+                        <input type="hidden" name="mode" value="scratch">
+
+                        <!-- Personal Info -->
+                        <fieldset class="form-fieldset">
+                            <legend>Personal Information</legend>
+                            <div class="field-row">
+                                <div class="form-group">
+                                    <label for="scratchName">Full Name *</label>
+                                    <input type="text" id="scratchName" placeholder="John Doe" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="scratchEmail">Email *</label>
+                                    <input type="email" id="scratchEmail" placeholder="john@example.com" required>
+                                </div>
+                            </div>
+                            <div class="field-row">
+                                <div class="form-group">
+                                    <label for="scratchPhone">Phone *</label>
+                                    <input type="tel" id="scratchPhone" placeholder="+91 9876543210" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="scratchLocation">Location *</label>
+                                    <input type="text" id="scratchLocation" placeholder="New Delhi, India" required>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <!-- Links -->
+                        <fieldset class="form-fieldset">
+                            <legend>Links &amp; Portfolio</legend>
+                            <div class="field-row">
+                                <div class="form-group">
+                                    <label for="scratchLinkedin">LinkedIn URL</label>
+                                    <input type="url" id="scratchLinkedin"
+                                        placeholder="https://linkedin.com/in/yourname">
+                                </div>
+                                <div class="form-group">
+                                    <label for="scratchGithub">GitHub URL</label>
+                                    <input type="url" id="scratchGithub" placeholder="https://github.com/yourname">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="scratchPortfolio">Portfolio / Website</label>
+                                <input type="url" id="scratchPortfolio" placeholder="https://yourportfolio.com">
+                            </div>
+                        </fieldset>
+
+                        <!-- Education -->
+                        <fieldset class="form-fieldset">
+                            <legend>Education</legend>
+                            <div id="educationEntries">
+                                <div class="dynamic-entry">
+                                    <textarea class="small-textarea"
+                                        placeholder="e.g. B.Tech Computer Science, XYZ University, 2021-2025, CGPA: 8.5"
+                                        required></textarea>
+                                </div>
+                            </div>
+                            <button type="button" class="add-entry-btn" data-target="educationEntries">+ Add
+                                Education</button>
+                        </fieldset>
+
+                        <!-- Experience -->
+                        <fieldset class="form-fieldset">
+                            <legend>Experience</legend>
+                            <div id="experienceEntries">
+                                <div class="dynamic-entry">
+                                    <textarea class="small-textarea"
+                                        placeholder="e.g. Software Intern at ABC Corp, Jan–Jun 2024. Built REST APIs using FastAPI, integrated Redis caching, reduced response time by 40%."></textarea>
+                                </div>
+                            </div>
+                            <button type="button" class="add-entry-btn" data-target="experienceEntries">+ Add
+                                Experience</button>
+                        </fieldset>
+
+                        <!-- Projects -->
+                        <fieldset class="form-fieldset">
+                            <legend>Projects</legend>
+                            <div id="projectEntries">
+                                <div class="dynamic-entry">
+                                    <textarea class="small-textarea"
+                                        placeholder="e.g. RoleReady | Python, FastAPI, LangGraph — AI-powered resume builder that tailors resumes to job descriptions."></textarea>
+                                </div>
+                            </div>
+                            <button type="button" class="add-entry-btn" data-target="projectEntries">+ Add
+                                Project</button>
+                        </fieldset>
+
+                        <!-- Skills -->
+                        <fieldset class="form-fieldset">
+                            <legend>Skills</legend>
+                            <div class="form-group">
+                                <label for="scratchSkills">Technical Skills *</label>
+                                <textarea id="scratchSkills" class="small-textarea"
+                                    placeholder="e.g. Python, JavaScript, React, FastAPI, Docker, Git, PostgreSQL, AWS"
+                                    required></textarea>
+                            </div>
+                        </fieldset>
+
+                        <!-- Achievements -->
+                        <fieldset class="form-fieldset">
+                            <legend>Achievements &amp; Certifications</legend>
+                            <div id="achievementEntries">
+                                <div class="dynamic-entry">
+                                    <textarea class="small-textarea"
+                                        placeholder="e.g. AWS Certified Cloud Practitioner, 2024"></textarea>
+                                </div>
+                            </div>
+                            <button type="button" class="add-entry-btn" data-target="achievementEntries">+ Add
+                                Achievement</button>
+                        </fieldset>
+
+                        <!-- Job Description -->
+                        <fieldset class="form-fieldset">
+                            <legend>Target Job Description *</legend>
+                            <div class="form-group">
+                                <textarea id="scratchJd" name="jdText"
+                                    placeholder="Paste the full job description you're targeting..."
+                                    required></textarea>
+                                <div id="scratch-jd-error" class="error-message"></div>
+                            </div>
+                        </fieldset>
+
+                        <button type="submit" class="btn-primary" id="scratchSubmitBtn">
+                            <span class="btn-icon">&#10148;</span> Generate Resume from Scratch
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ═══════════ Progress / Download (shared) ═══════════ -->
             <div class="progress-card" id="progressCard" style="display:none;">
                 <div class="progress-spinner"></div>
                 <div class="progress-info">
                     <h3>Generating your resume...</h3>
-                    <p>Analyzing your resume, extracting keywords, and tailoring content. This may take 30–60 seconds.
-                    </p>
+                    <p>Analyzing keywords, tailoring content, and compiling PDF. This may take 30–60 seconds.</p>
                 </div>
             </div>
 
-            <!-- Download card -->
-            <div class="download-card" id="downloadCard" style="display:none;">
-                <div class="download-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
+            <div class="progress-card" id="atsProgressCard" style="display:none;">
+                <div class="progress-spinner"></div>
+                <div class="progress-info">
+                    <h3>Calculating ATS Score...</h3>
+                    <p>Scoring your resume against the job description. Almost there!</p>
                 </div>
-                <h3>Your resume is ready!</h3>
-                <p>Your tailored resume has been generated and downloaded.</p>
+            </div>
+
+            <div class="download-card" id="downloadCard" style="display:none;">
+                <div class="download-top">
+                    <div class="download-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Your resume is ready!</h3>
+                    <p>Your tailored resume has been generated and downloaded.</p>
+                </div>
+
+                <div class="ats-section" id="atsSection" style="display:none;">
+                    <h4 class="ats-title">ATS Compatibility Score</h4>
+                    <div class="ats-gauge-container">
+                        <div class="ats-gauge">
+                            <svg viewBox="0 0 120 120" class="ats-ring">
+                                <circle cx="60" cy="60" r="52" class="ats-ring-bg" />
+                                <circle cx="60" cy="60" r="52" class="ats-ring-fill" id="atsRingFill"
+                                    stroke-dasharray="326.73" stroke-dashoffset="326.73" />
+                            </svg>
+                            <div class="ats-score-text">
+                                <span class="ats-score-number" id="atsScoreNumber">0</span>
+                                <span class="ats-score-label">/ 100</span>
+                            </div>
+                        </div>
+                        <div class="ats-breakdown" id="atsBreakdown">
+                            <div class="ats-bar-item">
+                                <span class="ats-bar-label">Keyword Match</span>
+                                <div class="ats-bar">
+                                    <div class="ats-bar-fill" id="barKeyword"></div>
+                                </div>
+                                <span class="ats-bar-value" id="valKeyword">—</span>
+                            </div>
+                            <div class="ats-bar-item">
+                                <span class="ats-bar-label">Skills Coverage</span>
+                                <div class="ats-bar">
+                                    <div class="ats-bar-fill" id="barSkills"></div>
+                                </div>
+                                <span class="ats-bar-value" id="valSkills">—</span>
+                            </div>
+                            <div class="ats-bar-item">
+                                <span class="ats-bar-label">Experience</span>
+                                <div class="ats-bar">
+                                    <div class="ats-bar-fill" id="barExperience"></div>
+                                </div>
+                                <span class="ats-bar-value" id="valExperience">—</span>
+                            </div>
+                            <div class="ats-bar-item">
+                                <span class="ats-bar-label">Formatting</span>
+                                <div class="ats-bar">
+                                    <div class="ats-bar-fill" id="barFormatting"></div>
+                                </div>
+                                <span class="ats-bar-value" id="valFormatting">—</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ats-suggestions" id="atsSuggestions" style="display:none;">
+                        <h5>💡 Suggestions</h5>
+                        <ul id="suggestionsList"></ul>
+                    </div>
+                </div>
+
                 <button class="btn-secondary" id="regenerateBtn">Generate Another</button>
             </div>
         </main>
 
         <footer>
-            <p>&copy; 2026 Resume Automation &mdash; Powered by LangGraph</p>
+            <p>&copy; 2026 RoleReady &mdash; Powered by LangGraph &amp; Gemini</p>
         </footer>
     </div>
     <script src="static/script.js"></script>

@@ -406,6 +406,385 @@ footer p {
     color: var(--text-dim);
 }
 
+/* ── View transitions ─────────────────────────────────────────────── */
+.view {
+    animation: fadeSlideIn 0.3s ease-out;
+}
+
+/* ── Back Button ──────────────────────────────────────────────────── */
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.4rem 0;
+    margin-bottom: 0.75rem;
+    transition: color var(--transition);
+}
+
+.back-btn:hover {
+    color: var(--primary);
+}
+
+/* ── Card Titles ──────────────────────────────────────────────────── */
+.card-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+}
+
+.card-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+/* ── Mode Selector (landing — larger cards) ───────────────────────── */
+.mode-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.mode-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.75rem 1rem;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.mode-btn:hover {
+    border-color: var(--primary);
+    color: var(--text);
+    background: rgba(99, 102, 241, 0.06);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.mode-btn:active {
+    transform: translateY(0);
+}
+
+/* ── Form Fieldsets ───────────────────────────────────────────────── */
+.form-fieldset {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1.25rem 1.25rem 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.form-fieldset legend {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 0.5rem;
+}
+
+/* ── Text Inputs ──────────────────────────────────────────────────── */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="url"] {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    color: var(--text);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="tel"]::placeholder,
+input[type="url"]::placeholder {
+    color: var(--text-dim);
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* ── Field Rows (2 columns) ──────────────────────────────────────── */
+.field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+/* ── Small Textareas ─────────────────────────────────────────────── */
+.small-textarea {
+    width: 100%;
+    height: 4.5rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    color: var(--text);
+    resize: vertical;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    line-height: 1.5;
+}
+
+.small-textarea::placeholder {
+    color: var(--text-dim);
+}
+
+.small-textarea:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* ── Dynamic Entries ─────────────────────────────────────────────── */
+.dynamic-entry {
+    position: relative;
+    margin-bottom: 0.5rem;
+}
+
+.remove-entry-btn {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    background: rgba(248, 113, 113, 0.15);
+    border: none;
+    color: var(--error);
+    font-size: 1rem;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+    line-height: 1;
+}
+
+.remove-entry-btn:hover {
+    background: rgba(248, 113, 113, 0.3);
+}
+
+.add-entry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-family: var(--font);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.4rem 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition);
+    margin-top: 0.25rem;
+}
+
+.add-entry-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+/* ── Hidden utility ───────────────────────────────────────────────── */
+.hidden {
+    display: none !important;
+}
+
+/* ── Download card layout ─────────────────────────────────────────── */
+.download-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* ── ATS Score Section ────────────────────────────────────────────── */
+.ats-section {
+    width: 100%;
+    margin-top: 0.5rem;
+    margin-bottom: 1.25rem;
+    animation: fadeSlideIn 0.4s ease-out;
+}
+
+.ats-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    text-align: center;
+    margin-bottom: 1.25rem;
+    letter-spacing: -0.01em;
+}
+
+.ats-gauge-container {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    justify-content: center;
+}
+
+/* Circular gauge */
+.ats-gauge {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+}
+
+.ats-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.ats-ring-bg {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 8;
+}
+
+.ats-ring-fill {
+    fill: none;
+    stroke: #22c55e;
+    stroke-width: 8;
+    stroke-linecap: round;
+}
+
+.ats-score-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.ats-score-number {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text);
+}
+
+.ats-score-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+/* Breakdown bars */
+.ats-breakdown {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 260px;
+}
+
+.ats-bar-item {
+    display: grid;
+    grid-template-columns: 1fr 80px 36px;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ats-bar-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.ats-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.ats-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    background: #22c55e;
+}
+
+.ats-bar-value {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+}
+
+/* Suggestions */
+.ats-suggestions {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    text-align: left;
+}
+
+.ats-suggestions h5 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.6rem;
+    color: var(--text);
+}
+
+.ats-suggestions ul {
+    list-style: none;
+    padding: 0;
+}
+
+.ats-suggestions li {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(42, 45, 58, 0.5);
+    line-height: 1.5;
+}
+
+.ats-suggestions li:last-child {
+    border-bottom: none;
+}
+
+.ats-suggestions li::before {
+    content: '→ ';
+    color: var(--primary);
+}
+
 /* ── Responsive ───────────────────────────────────────────────────── */
 @media (max-width: 480px) {
     .container {
@@ -418,5 +797,17 @@ footer p {
 
     h1 {
         font-size: 1.5rem;
+    }
+
+    .mode-selector {
+        grid-template-columns: 1fr;
+    }
+
+    .ats-gauge-container {
+        flex-direction: column;
+    }
+
+    .ats-breakdown {
+        max-width: 100%;
     }
 }
