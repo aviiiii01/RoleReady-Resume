@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Automation - Upload JD</title>
+    <link rel="stylesheet" href="/frontend/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-mark">JD</div>
+            <h1>Job Description Analyzer</h1>
+            <p>Upload your resume &amp; paste a job description — we'll generate a tailored resume for you.</p>
+        </header>
+
+        <main>
+            <div class="card">
+                <form id="uploadForm">
+                    <!-- PDF Upload -->
+                    <div class="form-group">
+                        <label for="resumeFile">Your Current Resume (PDF)</label>
+                        <div class="file-drop-zone" id="dropZone">
+                            <input type="file" id="resumeFile" name="resumeFile" accept=".pdf" required>
+                            <div class="drop-content">
+                                <div class="drop-icon">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                </div>
+                                <p class="drop-text">Drag &amp; drop your PDF here, or <span
+                                        class="browse-link">browse</span></p>
+                                <p class="drop-hint">PDF files only, max 10 MB</p>
+                            </div>
+                            <div class="file-preview" id="filePreview" style="display:none;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
+                                <span id="fileName"></span>
+                                <button type="button" class="remove-file" id="removeFile">&times;</button>
+                            </div>
+                        </div>
+                        <div id="file-error" class="error-message"></div>
+                    </div>
+
+                    <!-- Job Description -->
+                    <div class="form-group">
+                        <label for="jdText">Job Description</label>
+                        <textarea id="jdText" name="jdText" placeholder="Paste the full job description here..."
+                            required></textarea>
+                        <div id="jd-error" class="error-message"></div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="submitBtn">
+                        <span class="btn-icon">&#10148;</span> Generate Tailored Resume
+                    </button>
+                </form>
+            </div>
+
+            <!-- Progress indicator -->
+            <div class="progress-card" id="progressCard" style="display:none;">
+                <div class="progress-spinner"></div>
+                <div class="progress-info">
+                    <h3>Generating your resume...</h3>
+                    <p>Analyzing your resume, extracting keywords, and tailoring content. This may take 30–60 seconds.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Download card -->
+            <div class="download-card" id="downloadCard" style="display:none;">
+                <div class="download-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h3>Your resume is ready!</h3>
+                <p>Your tailored resume has been generated and downloaded.</p>
+                <button class="btn-secondary" id="regenerateBtn">Generate Another</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Resume Automation &mdash; Powered by LangGraph</p>
+        </footer>
+    </div>
+    <script src="/frontend/static/script.js"></script>
+</body>
+
+</html>
