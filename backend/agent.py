@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 import fitz  # PyMuPDF
 
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 
 def _create_model(counter: int):
