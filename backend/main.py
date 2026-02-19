@@ -17,6 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+invocation_counter = 0
+
 
 # ── Generate Resume ─────────────────────────────────────────────────
 @app.post("/generate-resume")
@@ -57,11 +59,15 @@ async def generate_resume(
             f.write(b"")  # empty file, won't be read
 
     try:
+        global invocation_counter
+        invocation_counter = (invocation_counter % 10) + 1  # cycles 1 -> 2 -> ... -> 10 -> 1
+        print(f"[API Key Rotation] Using GEMINI_API_KEY{invocation_counter}")
         result = process_jd(
             jd_text=jd_text.strip(),
             pdf_path=pdf_path,
             mode=mode,
             candidate_details=candidate_details or "",
+            counter=invocation_counter
         )
 
         generated_pdf = os.path.join(tmp_dir, "resume.pdf")
@@ -98,11 +104,15 @@ async def ats_score(
     pdf_path = os.path.join(tmp_dir, "resume_to_score.pdf")
 
     try:
+        global invocation_counter
+        invocation_counter = (invocation_counter % 10) + 1
+        print(f"[API Key Rotation] ATS scoring using GEMINI_API_KEY{invocation_counter}")
+
         with open(pdf_path, "wb") as f:
             content = await resume_pdf.read()
             f.write(content)
 
-        score_result = calculate_ats_score(resume_pdf_path=pdf_path, jd_text=jd_text.strip())
+        score_result = calculate_ats_score(resume_pdf_path=pdf_path, jd_text=jd_text.strip(), counter=invocation_counter)
         return JSONResponse(content=score_result)
 
     except Exception as e:

@@ -11,7 +11,14 @@ import fitz  # PyMuPDF
 
 load_dotenv()
 
-model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
+
+def _create_model(counter: int):
+    """Create a ChatGoogleGenerativeAI model with the API key for the given counter (1-10)."""
+    api_key = os.getenv(f"GEMINI_API_KEY{counter}")
+    if not api_key:
+        raise RuntimeError(f"GEMINI_API_KEY{counter} not found in environment variables.")
+    print(f"[Model Init] Using GEMINI_API_KEY{counter}")
+    return ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2, api_key=api_key)
 
 
 # ── State ────────────────────────────────────────────────────────────
@@ -23,13 +30,12 @@ class AgentState(TypedDict):
     keywords: list[str]
     parsed_details: str     # structured resume details (JSON-like string)
     resume: str             # final LaTeX code
+    api_counter: int        # which API key (1-10) to use
 
 
 # ── Structured output schemas ────────────────────────────────────────
 class KeywordSchema(BaseModel):
     keywords: list[str]
-
-Keyword_model = model.with_structured_output(KeywordSchema)
 
 
 class ParsedResume(BaseModel):
@@ -44,7 +50,7 @@ class ParsedResume(BaseModel):
     skills: list[str] = Field(default_factory=list, description="Technical and soft skills")
     achievements: list[str] = Field(default_factory=list, description="Awards, certifications, achievements")
 
-Resume_parser_model = model.with_structured_output(ParsedResume)
+
 
 
 class LatexGen(BaseModel):
@@ -55,7 +61,7 @@ class LatexGen(BaseModel):
                     "No placeholders, no markdown fences, only raw LaTeX."
     )
 
-Latex_model = model.with_structured_output(LatexGen)
+
 
 
 # ── Node 1: Extract text from PDF ───────────────────────────────────
@@ -74,6 +80,8 @@ def extract_pdf_text(state: AgentState):
 # ── Node 2: Extract keywords from JD ────────────────────────────────
 def extract_keywords(state: AgentState):
     jd = state["jd_text"]
+    model = _create_model(state["api_counter"])
+    Keyword_model = model.with_structured_output(KeywordSchema)
     prompt = f"""
 You are an expert JD Keyword Analyst. Analyze the following Job Description and extract
 ALL important keywords that a resume MUST contain to pass ATS screening.
@@ -105,6 +113,8 @@ DO NOT PROVIDE ANYTHING EXCEPT THE KEYWORDS IN A LIST.
 # ── Node 3: Parse resume details from extracted text ─────────────────
 def parse_resume_details(state: AgentState):
     resume_text = state["resume_text"]
+    model = _create_model(state["api_counter"])
+    Resume_parser_model = model.with_structured_output(ParsedResume)
     prompt = f"""
       You are an expert Resume Parser. Given the raw text extracted from a PDF resume,
       parse it into structured fields. Extract every detail you can find.
@@ -468,7 +478,7 @@ OUTPUT ONLY THE COMPLETE LATEX CODE STARTING WITH \\documentclass. NO OTHER TEXT
 """
 
 
-def   _generate_and_compile(prompt, output_dir):
+def _generate_and_compile(prompt, output_dir, Latex_model):
     """Generate LaTeX from LLM and compile to PDF. Returns (success, latex_code, error_msg)."""
     response = Latex_model.invoke(prompt)
     latex_code = response.resume
@@ -512,6 +522,8 @@ def resume_gen(state: AgentState):
     keywords = state["keywords"]
     parsed_details = state["parsed_details"]
     mode = state["mode"]
+    model = _create_model(state["api_counter"])
+    Latex_model = model.with_structured_output(LatexGen)
     pdf_path_val = state.get("pdf_path", "")
     output_dir = os.path.dirname(pdf_path_val) if pdf_path_val else tempfile.mkdtemp()
     pdf_path = os.path.join(output_dir, "resume.pdf")
@@ -521,7 +533,7 @@ def resume_gen(state: AgentState):
 
     for attempt in range(1, MAX_RETRIES + 1):
         print(f"[resume_gen] Attempt {attempt}/{MAX_RETRIES}")
-        success, latex_code, error_msg = _generate_and_compile(prompt, output_dir)
+        success, latex_code, error_msg = _generate_and_compile(prompt, output_dir, Latex_model)
 
         if success:
             print("=" * 50)
@@ -533,6 +545,7 @@ def resume_gen(state: AgentState):
 
         if attempt < MAX_RETRIES:
             # Ask the LLM to fix the error on the next attempt
+            # Retry with the same Latex_model (same API key for this invocation)
             prompt = f"""
               The following LaTeX code failed to compile with this error:
               {error_msg}
@@ -605,14 +618,15 @@ class ATSScoreResult(BaseModel):
     formatting_score: int = Field(description="Formatting and ATS readability score 0-100")
     suggestions: list[str] = Field(description="3-5 specific improvement suggestions")
 
-ATS_model = model.with_structured_output(ATSScoreResult)
 
-
-def calculate_ats_score(resume_pdf_path: str, jd_text: str) -> dict:
+def calculate_ats_score(resume_pdf_path: str, jd_text: str, counter: int = 1) -> dict:
     """
     Score a generated resume PDF against a job description.
     Returns a dict with overall_score, breakdown, and suggestions.
     """
+    model = _create_model(counter)
+    ATS_model = model.with_structured_output(ATSScoreResult)
+
     # Extract text from the generated resume
     resume_text = ""
     with fitz.open(resume_pdf_path) as doc:
@@ -665,7 +679,7 @@ If major required skills are missing, reduce keyword_match and skills_coverage s
 
 
 # ── Public API ───────────────────────────────────────────────────────
-def process_jd(jd_text: str, pdf_path: str = None, mode: str = "update", candidate_details: str = "") -> dict:
+def process_jd(jd_text: str, pdf_path: str = None, mode: str = "update", candidate_details: str = "", counter: int = 1) -> dict:
     """
     Run the full agent pipeline.
     Args:
@@ -673,6 +687,7 @@ def process_jd(jd_text: str, pdf_path: str = None, mode: str = "update", candida
         pdf_path:          Absolute path to the user's uploaded resume PDF (None for scratch mode).
         mode:              'scratch' or 'update'
         candidate_details: Structured candidate info from the scratch form (only used in scratch mode).
+        counter:           Which API key to use (1-10), cycles round-robin.
     Returns:
         dict with keys: keywords, parsed_details, resume (LaTeX code)
     """
@@ -680,6 +695,7 @@ def process_jd(jd_text: str, pdf_path: str = None, mode: str = "update", candida
         "jd_text": jd_text,
         "mode": mode,
         "pdf_path": pdf_path or "",
+        "api_counter": counter,
     }
     # In scratch mode, inject the form data as pre-parsed details
     if mode == "scratch" and candidate_details:
