@@ -1,4 +1,6 @@
+import warnings; import langchain_core; warnings.filterwarnings("ignore", message="The default value of `allowed_objects` will change", category=DeprecationWarning)  # noqa: E402
 import os
+
 import tempfile
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -120,3 +122,7 @@ async def ats_score(
 
 
 # ── Serve static frontend ──────────────────────────────────────────
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

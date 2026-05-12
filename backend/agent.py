@@ -1,3 +1,9 @@
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="The default value of `allowed_objects` will change",
+)
+
 import subprocess
 import re
 import os
@@ -35,20 +41,55 @@ class AgentState(TypedDict):
 
 # ── Structured output schemas ────────────────────────────────────────
 class KeywordSchema(BaseModel):
-    keywords: list[str]
+    role_title: str = Field(description="The exact job title from the JD (e.g., 'Senior Backend Engineer', 'Content Writer')")
+    industry_domain: str = Field(description="The industry or domain (e.g., 'FinTech', 'Dating App', 'Freelance Platform', 'Healthcare SaaS')")
+    seniority_level: str = Field(description="Seniority level: 'Intern', 'Junior', 'Mid', 'Senior', 'Lead', 'Staff', 'Principal', 'Manager'")
+    core_responsibilities: list[str] = Field(description="3-5 core responsibilities distilled from the JD, each as a concise phrase")
+    hard_skills: list[str] = Field(description="Technical skills, tools, languages, frameworks, platforms explicitly mentioned or strongly implied by the JD")
+    soft_skills: list[str] = Field(description="Soft skills, work style traits, and interpersonal abilities the JD asks for")
+    domain_keywords: list[str] = Field(description="Industry-specific terminology, concepts, and buzzwords relevant to this role")
+    keywords: list[str] = Field(description="Final flat list of ALL ATS-critical keywords combining hard skills, soft skills, and domain terms")
 
 
 class ParsedResume(BaseModel):
-    name: str = Field(description="Full name of the candidate")
-    email: str = Field(default="", description="Email address")
-    phone: str = Field(default="", description="Phone number")
-    location: str = Field(default="", description="City, State or Country")
-    links: list[str] = Field(default_factory=list, description="LinkedIn, GitHub, portfolio URLs")
-    education: list[str] = Field(description="Education entries, each as a single descriptive string")
-    experience: list[str] = Field(description="Work experience entries, each as a single descriptive string")
-    projects: list[str] = Field(default_factory=list, description="Project entries")
-    skills: list[str] = Field(default_factory=list, description="Technical and soft skills")
-    achievements: list[str] = Field(default_factory=list, description="Awards, certifications, achievements")
+    name: str = Field(description="Full name of the candidate exactly as it appears on the resume")
+    email: str = Field(default="", description="Email address of the candidate")
+    phone: str = Field(default="", description="Phone number including country code if present")
+    location: str = Field(default="", description="City, State/Province, Country as listed on the resume")
+    links: list[str] = Field(
+        default_factory=list,
+        description="ALL profile/portfolio URLs found on the resume — LinkedIn, GitHub, personal website, Behance, Dribbble, Medium, LeetCode, etc. Include the full URL."
+    )
+    education: list[str] = Field(
+        description="Each education entry as a SINGLE string in this format: "
+                    "'Degree — Institution, Location | Start Date – End Date | GPA/CGPA: X.X (if mentioned) | Relevant Coursework: ... (if mentioned)'. "
+                    "Example: 'B.Tech in Computer Science — IIT Bombay, Mumbai | Aug 2019 – May 2023 | CGPA: 8.9 | Coursework: Data Structures, Machine Learning'"
+    )
+    experience: list[str] = Field(
+        description="Each work experience entry as a SINGLE string in this format: "
+                    "'Job Title — Company Name, Location | Start Date – End Date\\n• bullet1\\n• bullet2\\n• bullet3'. "
+                    "Preserve ALL bullet points/responsibilities exactly as written. Include dates, role title, and company name. "
+                    "Example: 'Software Engineer Intern — Google, Bangalore | May 2022 – Jul 2022\\n• Built a microservice handling 10K RPM\\n• Reduced latency by 30%'"
+    )
+    projects: list[str] = Field(
+        default_factory=list,
+        description="Each project entry as a SINGLE string in this format: "
+                    "'Project Name | Tech Stack: tech1, tech2, tech3 | Date (if available)\\n• bullet1\\n• bullet2'. "
+                    "Include the project description, technologies used, and dates if mentioned. "
+                    "Example: 'E-Commerce Platform | Tech Stack: React, Node.js, MongoDB | Jan 2023 – Mar 2023\\n• Built a full-stack e-commerce app with payment integration\\n• Deployed on AWS EC2 with CI/CD pipeline'"
+    )
+    skills: list[str] = Field(
+        default_factory=list,
+        description="ALL skills exactly as listed on the resume — programming languages, frameworks, libraries, tools, databases, cloud platforms, methodologies, soft skills. "
+                    "If the resume organizes skills into categories (e.g., 'Languages: Python, Java'), preserve each skill individually: ['Python', 'Java', ...]. "
+                    "Do NOT skip any skill. Include every single one."
+    )
+    achievements: list[str] = Field(
+        default_factory=list,
+        description="ALL achievements, awards, certifications, publications, honors, hackathon wins, competitive programming ranks, open source contributions, etc. "
+                    "Include the issuing organization and date if mentioned. "
+                    "Example: 'AWS Certified Cloud Practitioner — Amazon Web Services, Nov 2024'"
+    )
 
 
 
@@ -83,29 +124,98 @@ def extract_keywords(state: AgentState):
     model = _create_model(state["api_counter"])
     Keyword_model = model.with_structured_output(KeywordSchema)
     prompt = f"""
-You are an expert JD Keyword Analyst. Analyze the following Job Description and extract
-ALL important keywords that a resume MUST contain to pass ATS screening.
+You are an elite ATS Keyword Strategist and JD Analyst. Your job is to deeply understand
+a Job Description — not just scan it — and extract ONLY the keywords that would actually
+appear on a qualified candidate's resume and matter for ATS matching.
 
-Extract keywords from these categories:
-1. Programming languages (e.g., Python, Java, JavaScript, C++)
-2. Frameworks & Libraries (e.g., React, FastAPI, Django, Spring Boot)
-3. Tools & Platforms (e.g., Docker, Kubernetes, Git, Jenkins, Jira)
-4. Databases (e.g., PostgreSQL, MongoDB, Redis, MySQL)
-5. Cloud & Infrastructure (e.g., AWS, GCP, Azure, Terraform)
-6. Methodologies (e.g., Agile, Scrum, CI/CD, TDD, Microservices)
-7. Soft skills & responsibilities (e.g., Team Leadership, Cross-functional, Stakeholder Management)
-8. Domain-specific terms (e.g., Machine Learning, REST API, GraphQL, Data Pipeline)
+═══════════════════════════════════════════════════════════════════
+STEP 1: UNDERSTAND THE JD HOLISTICALLY
+═══════════════════════════════════════════════════════════════════
+Before extracting anything, analyze:
+- What is the EXACT role title?
+- What industry/domain is this company in?
+- What seniority level is this role (Intern/Junior/Mid/Senior/Lead/Staff)?
+- What are the 3-5 CORE things this person will do day-to-day?
+- What MUST a candidate absolutely know vs. what is nice-to-have?
 
-JD:
+═══════════════════════════════════════════════════════════════════
+STEP 2: EXTRACT MEANINGFUL KEYWORDS (NOT NOISE)
+═══════════════════════════════════════════════════════════════════
+
+EXTRACT these (only if they appear or are strongly implied by the JD):
+
+1. **Technical Skills & Tools** — Programming languages, frameworks, libraries, tools,
+   platforms, databases, cloud services that are EXPLICITLY mentioned or DIRECTLY implied.
+   → e.g., "Python", "React", "Docker", "PostgreSQL", "AWS", "Figma"
+
+2. **Domain-Specific Concepts** — Technical concepts, methodologies, and specialized
+   knowledge areas the role requires.
+   → e.g., "Machine Learning", "CI/CD", "REST API", "SEO", "A/B Testing", "Data Pipeline"
+
+3. **Role-Relevant Action Competencies** — What the person actually DOES, phrased as
+   resume-worthy skills (not vague company culture phrases).
+   → e.g., "Content Strategy", "Cross-functional Collaboration", "Technical Writing",
+          "System Design", "Performance Optimization", "Stakeholder Management"
+
+4. **Certifications & Standards** — If the JD mentions or implies specific certifications,
+   compliance standards, or industry benchmarks.
+   → e.g., "AWS Certified", "SOC 2", "GDPR", "PMP"
+
+5. **Soft Skills** — ONLY if the JD explicitly asks for them AND they'd naturally appear
+   on a resume's skills section or bullet points.
+   → e.g., "Team Leadership", "Mentoring", "Problem-Solving", "Communication"
+
+DO NOT EXTRACT these:
+- Company perks, benefits, salary information ("competitive salary", "remote role")
+- Vague culture phrases ("supportive environment", "values innovation", "dream big")
+- Job posting boilerplate ("we offer", "what we provide", "equal opportunity")
+- Candidate traits that aren't skills ("passionate", "self-starter", "thrive in")
+- Overly generic filler ("fast-paced", "cutting-edge", "world-class", "delightful")
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: INCLUDE STANDARD INDUSTRY COMPANIONS
+═══════════════════════════════════════════════════════════════════
+If the JD mentions a technology, include its common companions that a qualified
+candidate would realistically know:
+- "React" → also include "JavaScript", "HTML", "CSS", "TypeScript" (if not already listed)
+- "Django" → also include "Python" (if not already listed)
+- "Kubernetes" → also include "Docker", "containerization" (if not already listed)
+- "Machine Learning" → also include "Deep Learning", "TensorFlow"/"PyTorch" (if relevant to context)
+
+But ONLY add companions that genuinely fit the JD's context. Don't add "Kubernetes"
+to a Content Writer JD just because they mentioned "platform".
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: ABBREVIATIONS & ALTERNATE FORMS
+═══════════════════════════════════════════════════════════════════
+Include both the full term AND common abbreviation where applicable:
+- "Amazon Web Services" AND "AWS"
+- "Continuous Integration/Continuous Deployment" AND "CI/CD"
+- "Search Engine Optimization" AND "SEO"
+- "User Experience" AND "UX"
+- "Application Programming Interface" AND "API"
+
+═══════════════════════════════════════════════════════════════════
+JOB DESCRIPTION TO ANALYZE:
+═══════════════════════════════════════════════════════════════════
 {jd}
 
-Be EXHAUSTIVE — missing even one important keyword can cause ATS rejection.
-Return ALL keywords as a flat list. Include both the full term and common abbreviations (e.g., both "Amazon Web Services" and "AWS").
-DO NOT PROVIDE ANYTHING EXCEPT THE KEYWORDS IN A LIST.
+Now fill in ALL fields: role_title, industry_domain, seniority_level,
+core_responsibilities, hard_skills, soft_skills, domain_keywords, and the
+final combined keywords list.
+
+The final `keywords` list should be the UNION of hard_skills + soft_skills + domain_keywords,
+deduplicated. Quality over quantity — every keyword should be something a recruiter or ATS
+would actually search for when screening resumes for this role.
 """
     response = Keyword_model.invoke(prompt)
     print("=" * 50)
-    print("Keywords: ", response.keywords)
+    print(f"Role: {response.role_title} | Domain: {response.industry_domain} | Level: {response.seniority_level}")
+    print(f"Core Responsibilities: {response.core_responsibilities}")
+    print(f"Hard Skills: {response.hard_skills}")
+    print(f"Soft Skills: {response.soft_skills}")
+    print(f"Domain Keywords: {response.domain_keywords}")
+    print(f"Final Keywords ({len(response.keywords)}): {response.keywords}")
     print("=" * 50)
     return {"keywords": response.keywords}
 
@@ -116,17 +226,78 @@ def parse_resume_details(state: AgentState):
     model = _create_model(state["api_counter"])
     Resume_parser_model = model.with_structured_output(ParsedResume)
     prompt = f"""
-      You are an expert Resume Parser. Given the raw text extracted from a PDF resume,
-      parse it into structured fields. Extract every detail you can find.
+You are a world-class Resume Parser with 100% recall. Your job is to extract EVERY piece
+of information from the raw resume text below — missing even a single detail is a failure.
 
-      Raw resume text:
-      \"\"\"
-      {resume_text}
-      \"\"\"
+═══════════════════════════════════════════════════════════════════
+RAW RESUME TEXT (extracted from PDF — formatting may be messy):
+═══════════════════════════════════════════════════════════════════
+\"\"\"
+{resume_text}
+\"\"\"
 
-      Parse the above into: name, email, phone, location, links, education, experience,
-      projects, skills, and achievements. Be thorough — do not miss any information.
-      """
+═══════════════════════════════════════════════════════════════════
+PARSING INSTRUCTIONS — FOLLOW EXACTLY:
+═══════════════════════════════════════════════════════════════════
+
+1. **PERSONAL DETAILS**:
+   - `name`: The candidate's full name, exactly as written (usually the largest/first text).
+   - `email`: Email address (look for patterns like xxx@xxx.xxx).
+   - `phone`: Phone number with country code if present (look for +XX, digits, dashes, spaces).
+   - `location`: City, State/Province, Country as listed.
+   - `links`: Extract ALL URLs — LinkedIn, GitHub, portfolio, personal website, Medium, LeetCode,
+     Behance, Dribbble, Kaggle, etc. Include the full URL. Some resumes use icons or labels
+     (e.g., "LinkedIn: /in/johndoe") — reconstruct the full URL if possible.
+
+2. **EDUCATION** (CRITICAL — include dates):
+   - Extract EVERY education entry: degree, major/field of study, institution name, location, dates.
+   - Format each as: "Degree — Institution, Location | Start Date – End Date | GPA: X.X | Coursework: ..."
+   - Include GPA/CGPA/percentage if mentioned.
+   - Include relevant coursework, honors, or distinctions if listed.
+   - If only a graduation year is given, use that as the end date.
+
+3. **EXPERIENCE** (CRITICAL — include dates + ALL bullet points):
+   - Extract EVERY work/internship entry: job title, company name, location, start date, end date.
+   - Preserve ALL responsibility/achievement bullet points EXACTLY as written — do NOT summarize.
+   - Format each as: "Job Title — Company, Location | Start – End\n• bullet1\n• bullet2"
+   - If the resume says "Present" or "Current", use "Present" as the end date.
+   - Include freelance work, part-time roles, teaching assistantships — everything.
+
+4. **PROJECTS** (CRITICAL — include dates + tech stacks):
+   - Extract EVERY project: project name, technologies/tools used, dates (if available).
+   - Preserve ALL description bullet points EXACTLY as written.
+   - Format each as: "Project Name | Tech Stack: tech1, tech2 | Date\n• bullet1\n• bullet2"
+   - Look for tech stacks in parentheses, after "|", after "Built with", or in italic text.
+   - If no date is given for a project, omit the date portion but still include everything else.
+
+5. **SKILLS** (CRITICAL — extract EVERY individual skill):
+   - Extract ALL skills from every section: "Technical Skills", "Skills", "Core Competencies",
+     "Technologies", or skills mentioned in bullet points.
+   - Include: programming languages, frameworks, libraries, databases, cloud platforms, DevOps tools,
+     operating systems, IDEs, design tools, methodologies (Agile, Scrum), soft skills.
+   - If skills are grouped ("Languages: Python, Java, C++"), split them into individual entries.
+   - Do NOT skip any skill. Completeness is critical for ATS matching.
+
+6. **ACHIEVEMENTS** (extract ALL):
+   - Awards, honors, dean's list, scholarships.
+   - Certifications (AWS, Google, Microsoft, etc.) with issuing org and date.
+   - Publications, patents, research papers.
+   - Hackathon wins, competitive programming ranks (CodeForces, LeetCode, etc.).
+   - Open source contributions, speaking engagements.
+   - Any other notable accomplishments.
+   - Include the issuing organization and date if mentioned.
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL RULES:
+═══════════════════════════════════════════════════════════════════
+- Do NOT invent or hallucinate any information. Only extract what is present in the text.
+- Do NOT summarize or paraphrase bullet points — preserve them verbatim.
+- Do NOT skip entries because they seem minor — include EVERYTHING.
+- Dates are ESSENTIAL for education, experience, and projects. Always extract them.
+- If the resume has unusual formatting or sections (e.g., "Volunteering", "Research",
+  "Leadership"), map them to the closest field (experience, projects, or achievements).
+- If a field has no data in the resume, return an empty string or empty list.
+"""
     response = Resume_parser_model.invoke(prompt)
     # Convert to a readable string for the next node
     details = f"""
@@ -176,27 +347,12 @@ resume_latex = r"""
 \usepackage{tabularx}
 
 \usepackage{fontawesome5}
-\usepackage[scale=0.90,lf]{FiraMono}
+\usepackage{mathptmx}  % Times New Roman font
+\usepackage[T1]{fontenc}
 
 \definecolor{light-grey}{gray}{0.83}
 \definecolor{dark-grey}{gray}{0.3}
 \definecolor{text-grey}{gray}{.08}
-
-\DeclareRobustCommand{\ebseries}{\fontseries{eb}\selectfont}
-\DeclareTextFontCommand{\texteb}{\ebseries}
-
-\usepackage{contour}
-\usepackage[normalem]{ulem}
-\renewcommand{\ULdepth}{1.8pt}
-\contourlength{0.8pt}
-\newcommand{\myuline}[1]{%
-  \uline{\phantom{#1}}%
-  \llap{\contour{white}{#1}}%
-}
-
-\usepackage{tgheros}
-\renewcommand*\familydefault{\sfdefault}
-\usepackage[T1]{fontenc}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -247,19 +403,41 @@ resume_latex = r"""
 \newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
 \newcommand{\resumeItemListStart}{\begin{itemize}}
 \newcommand{\resumeItemListEnd}{\end{itemize}\vspace{0pt}}
+\newcommand{\resumeAchievementListStart}{\begin{itemize}[leftmargin=0.15in]}
+\newcommand{\resumeAchievementListEnd}{\end{itemize}\vspace{0pt}}
 
 \color{text-grey}
 
 \begin{document}
 
+%----------HEADER----------
 \begin{center}
     \textbf{\Huge Harshibar} \\ \vspace{5pt}
     \small \faPhone* \texttt{555.555.5555} \hspace{1pt} $|$
     \hspace{1pt} \faEnvelope \hspace{2pt} \texttt{hello@email.com} \hspace{1pt} $|$
-    \hspace{1pt} \faMapMarker* \hspace{2pt}\texttt{U.S. Citizen}
+    \hspace{1pt} \faLinkedin \hspace{2pt} \href{https://linkedin.com/in/harshibar}{\texttt{linkedin.com/in/harshibar}} \hspace{1pt} $|$
+    \hspace{1pt} \faGithub \hspace{2pt} \href{https://github.com/harshibar}{\texttt{github.com/harshibar}} \hspace{1pt} $|$
+    \hspace{1pt} \faMapMarker* \hspace{2pt}\texttt{San Francisco, CA}
     \\ \vspace{-3pt}
 \end{center}
 
+%----------SUMMARY----------
+\section{SUMMARY}
+ \begin{itemize}[leftmargin=0in, label={}]
+    \small{\item{
+     Results-driven Software Engineer with 2+ years of experience building scalable web applications and data pipelines. Proficient in Python, JavaScript, and cloud technologies. Passionate about delivering high-impact products that improve user experience and operational efficiency.
+    }}
+ \end{itemize}
+
+%----------EDUCATION----------
+\section{EDUCATION}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Wellesley College}{Aug. 2014 -- May 2018}
+      {Bachelor of Arts in Computer Science}{Wellesley, MA}
+  \resumeSubHeadingListEnd
+
+%----------EXPERIENCE----------
 \section{EXPERIENCE}
   \resumeSubHeadingListStart
     \resumeSubheading
@@ -271,6 +449,7 @@ resume_latex = r"""
       \resumeItemListEnd
   \resumeSubHeadingListEnd
 
+%----------PROJECTS----------
 \section{PROJECTS}
     \resumeSubHeadingListStart
       \resumeProjectHeading
@@ -280,13 +459,7 @@ resume_latex = r"""
           \resumeItemListEnd
     \resumeSubHeadingListEnd
 
-\section{EDUCATION}
-  \resumeSubHeadingListStart
-    \resumeSubheading
-      {Wellesley College}{Aug. 2014 -- May 2018}
-      {Bachelor of Arts in Computer Science}{Wellesley, MA}
-  \resumeSubHeadingListEnd
-
+%----------SKILLS----------
 \section{SKILLS}
  \begin{itemize}[leftmargin=0in, label={}]
     \small{\item{
@@ -294,6 +467,13 @@ resume_latex = r"""
      \textbf{Tools}     {: Git, Docker, Jira, Figma}
     }}
  \end{itemize}
+
+%----------ACHIEVEMENTS & CERTIFICATIONS----------
+\section{ACHIEVEMENTS \& CERTIFICATIONS}
+  \resumeAchievementListStart
+    \resumeItem{\textbf{Dean's List} -- Wellesley College, 2014--2018}
+    \resumeItem{\textbf{Google Women Techmakers Scholar} -- Google, 2017}
+  \resumeAchievementListEnd
 
 \end{document}"""
 
@@ -385,6 +565,7 @@ LATEX COMPILATION RULES (NON-NEGOTIABLE):
   - Use \\$ instead of $ (unless in math mode)
   - Use \\# instead of #
   - Use \\_ instead of _ in text (URLs, company names, etc.)
+- FONT: Use Times New Roman via \\usepackage{{mathptmx}}. Do NOT use tgheros, FiraMono, or any sans-serif font.
 
 ═══════════════════════════════════════════════════════════════════
 MODE & TAILORING INSTRUCTIONS:
@@ -392,24 +573,58 @@ MODE & TAILORING INSTRUCTIONS:
 {tailoring_note}
 
 ═══════════════════════════════════════════════════════════════════
+SECTION ORDER (MANDATORY — follow this EXACT sequence):
+═══════════════════════════════════════════════════════════════════
+1. HEADER (Name + Personal Details)
+2. SUMMARY
+3. EDUCATION
+4. EXPERIENCE (ONLY if the candidate has work experience — see rule below)
+5. PROJECTS
+6. SKILLS
+7. ACHIEVEMENTS & CERTIFICATIONS
+
+IMPORTANT: If the candidate has NO work experience (no jobs, internships, or professional roles),
+do NOT include the EXPERIENCE section at all. Skip it entirely and go directly from EDUCATION to PROJECTS.
+Do NOT create a blank or placeholder Experience section.
+
+Do NOT rearrange sections. Follow the above order strictly.
+
+═══════════════════════════════════════════════════════════════════
 ATS OPTIMIZATION RULES (CRITICAL — FOLLOW ALL):
 ═══════════════════════════════════════════════════════════════════
 
-1. SECTION ORDER (top to bottom):
-   - Header (Name, Phone, Email, Location, Links)
-   - Education (if recent grad) OR Experience (if experienced)
-   - Experience / Education (the other one)
-   - Projects (2-3 most relevant)
-   - Skills (MUST be last or second-to-last)
+1. HEADER — CLEAN & COMPLETE:
+   - Name prominently displayed using \\textbf{{\\Huge ...}}
+   - Phone, Email, Location on one line with FontAwesome icons.
+   - LinkedIn, GitHub, Portfolio links (if available) on the same or next line.
+   - Use \\faPhone*, \\faEnvelope, \\faMapMarker*, \\faLinkedin, \\faGithub icons.
+   - Use \\texttt{{}} for contact details and \\href{{}}{{}} for clickable links.
 
-2. SKILLS SECTION — THE ATS KEYWORD GOLDMINE:
-   - Include EVERY technology, tool, framework, language, and methodology from the JD.
-   - Organize into clear categories: Languages | Frameworks | Tools | Databases | Cloud | Methodologies
-   - If the JD mentions "React", "Node.js", "AWS", "Docker" — ALL must appear here.
-   - This section alone can determine pass/fail for ATS screening.
-   - Include 15-25 skills minimum, organized into 3-5 categories.
+2. SUMMARY SECTION — TAILORED PROFESSIONAL SUMMARY:
+   - Write a concise 2-3 sentence professional summary (40-60 words).
+   - The summary MUST be specifically tailored to the target JD and role.
+   - Mention the candidate's years of experience, core domain, and top 3-4 skills relevant to the JD.
+   - Weave in 3-5 HIGH-PRIORITY JD keywords naturally into the summary.
+   - Use the format: "[Role-aligned title] with [X]+ years of experience in [domain]. 
+     Proficient in [JD-relevant tech/skills]. Proven track record of [key achievement relevant to JD]."
+   - ABSOLUTE BLACKLIST for summary (NEVER use these words/phrases):
+     "passionate", "self-motivated", "team player", "dynamic", "go-getter", "results-oriented",
+     "detail-oriented", "hard-working", "dedicated", "innovative thinker", "synergy",
+     "think outside the box", "proactive", "highly motivated", "fast learner", "people person"
+   - Instead of buzzwords, use CONCRETE facts: technologies, metrics, and achievements.
+   - Do NOT bold anything inside the summary — keep it as clean, flowing text.
+   - Example: "Backend Engineer with 3+ years of experience building scalable 
+     microservices and RESTful APIs. Proficient in Python, FastAPI, PostgreSQL, and AWS. 
+     Proven track record of reducing system latency by 40\\% and processing 2M+ daily transactions."
 
-3. EXPERIENCE BULLETS — PROFESSIONAL & QUANTIFIED:
+3. EDUCATION SECTION:
+   - Include degree, university, dates, GPA (if > 3.5 / 8.0), relevant coursework.
+   - Add relevant coursework ONLY if it matches JD requirements.
+   - Bold the institution name and degree — dates in normal weight on the right.
+
+4. EXPERIENCE SECTION — PROFESSIONAL & QUANTIFIED (SKIP IF NO EXPERIENCE):
+   - *** CRITICAL: If the candidate has NO work experience, internships, or professional roles,
+     do NOT include this section at all. Omit the \\section{{EXPERIENCE}} entirely. ***
    - Every bullet MUST follow the XYZ formula: "Accomplished [X] as measured by [Y], by doing [Z]"
    - Every bullet MUST start with a STRONG action verb: Engineered, Architected, Spearheaded,
      Optimized, Implemented, Automated, Designed, Developed, Led, Deployed, Integrated, Built,
@@ -421,38 +636,169 @@ ATS OPTIMIZATION RULES (CRITICAL — FOLLOW ALL):
      * "Engineered a real-time data pipeline with Apache Kafka \\& PySpark, processing 2M+ events/day with 99.9\\% uptime"
      * "Led migration of monolithic application to React \\& Next.js, improving page load speed by 45\\% and increasing user engagement by 30\\%"
    - 3-5 bullets per experience entry. Each bullet should be 1-2 lines max.
+   - Bold ONLY the company name and job title (in \\resumeSubheading). Do NOT bold random words inside bullets.
+   - Bold a key metric or achievement phrase ONLY if it is the most impressive result (max 1 bold per bullet).
+   - ANTI-REPETITION: Each bullet MUST start with a DIFFERENT action verb. NEVER repeat the same
+     verb across bullets within the same experience entry or across different entries.
+     BAD: "Developed X... Developed Y... Developed Z..." (same verb repeated)
+     GOOD: "Engineered X... Optimized Y... Deployed Z..." (varied verbs)
+   - NEVER use buzzwords in bullets: "dynamic", "synergy", "leveraged", "utilized",
+     "facilitated", "passionate", "dedicated". Use precise technical language instead.
 
-4. PROJECTS SECTION — TECH STACK ON HEADING LINE:
+5. PROJECTS SECTION — MAXIMUM 3 PROJECTS:
+   - CRITICAL RULE: Include AT MOST 3 projects. If the candidate has more than 3, select the 3 most relevant.
+   - PROJECT SELECTION LOGIC:
+     a) First, check how many of the candidate's projects are RELEVANT to the JD (matching tech stack, domain, or role).
+     b) If ALL projects are relevant: pick the top 3 most impressive ones.
+     c) If SOME projects are relevant: include ALL relevant ones (up to 3) and fill remaining slots
+        with the candidate's best non-relevant projects.
+     d) If NO projects are relevant: pick 1-2 candidate projects that are closest in tech/concept,
+        and REWRITE their bullet points to emphasize any JD-relevant skills used.
+        Then create 1 additional project that uses the JD's tech stack — but ONLY in scratch mode.
+        In update mode, use only the candidate's real projects.
    - Format: \\resumeProjectHeading{{\\textbf{{Project Name}} $|$ \\emph{{Tech1, Tech2, Tech3}}}}{{Date}}
-   - CRITICAL: List only 3-5 KEY technologies on the heading line. Do NOT list every tech — pick the most
-     JD-relevant ones. The heading MUST fit on one line. Additional techs can go in the bullets.
+   - CRITICAL: List only 3-5 KEY technologies on the heading line — pick the most JD-relevant ones.
+     The heading MUST fit on one line. Additional techs can go in the bullets.
    - Each project gets 2-3 strong bullets with quantified results.
-   - Tech stacks MUST align with JD keywords.
-   - Project bullets should demonstrate hands-on building, not just describing.
+   - Bold ONLY the project name. Tech stack in \\emph (italic). Do NOT bold tech names in bullets.
 
-5. EDUCATION SECTION:
-   - Include degree, university, dates, GPA (if > 3.5 / 8.0), relevant coursework.
-   - Add relevant coursework ONLY if it matches JD requirements.
-
-6. HEADER — CLEAN & COMPLETE:
-   - Name prominently displayed.
-   - Phone, Email, Location on one line with icons.
-   - LinkedIn, GitHub, Portfolio links (if available) on the same or next line.
-   - Use \\faPhone*, \\faEnvelope, \\faMapMarker*, \\faLinkedin, \\faGithub icons.
+6. SKILLS SECTION — ATS KEYWORD GOLDMINE (CRITICAL):
+   - Organize into clear categories using \\textbf for ONLY the category names:
+     \\textbf{{Languages}}: Python, Java, JavaScript, SQL
+     \\textbf{{Frameworks}}: React, Django, FastAPI, Spring Boot
+     \\textbf{{Tools \\& Platforms}}: Docker, Kubernetes, Git, Jenkins
+     \\textbf{{Databases}}: PostgreSQL, MongoDB, Redis
+     \\textbf{{Cloud}}: AWS, GCP, Azure
+   - INCLUDE BOTH:
+     a) ALL skills the candidate already has (from their resume).
+     b) JD-relevant skills/keywords that the candidate is likely to know based on their experience.
+   - DO NOT include buzzwords or filler words that HURT ATS scores. COMPLETE BLACKLIST:
+     * Vague traits: "Hard-working", "Team player", "Fast learner", "Detail-oriented", "Self-motivated",
+       "Dynamic", "Passionate", "Dedicated", "Innovative", "Proactive", "Go-getter"
+     * Generic soft phrases: "Problem-solving", "Communication skills", "Time management",
+       "Leadership skills", "Interpersonal skills", "Critical thinking", "Work ethic",
+       "Multitasking", "Organizational skills", "Analytical skills"
+     * Non-technical filler: "Microsoft Office", "MS Word", "MS Excel", "Google Docs",
+       "Google Sheets", "PowerPoint" (unless JD EXPLICITLY requires these)
+     * Subjective claims: "Expert in", "Proficient communicator", "Strong team player"
+   - The skills section is ONLY for hard skills: tools, technologies, frameworks, languages,
+     databases, cloud platforms, methodologies (Agile, Scrum, CI/CD), and technical competencies.
+   - ONLY include concrete, searchable, technical skills that ATS scanners look for.
+   - Do NOT repeat the same skill in multiple categories.
+   - Include 15-25 skills minimum, organized into 3-5 categories.
+   - The skills in each category should be listed as comma-separated plain text (not bold).
 
 7. ACHIEVEMENTS & CERTIFICATIONS SECTION:
-   - Use simple \\resumeItem bullet points. Do NOT use \\resumeSubheading.
-   - Format: \\resumeItem{{\\textbf{{Certificate/Award Name}} -- Issuing Organization, Date}}
-   - Keep each entry to a SINGLE bullet point. No sub-bullets or descriptions unless very brief.
-   - Example:
-     \\resumeItem{{\\textbf{{AWS Certified Cloud Practitioner}} -- Amazon Web Services, 2024}}
-     \\resumeItem{{\\textbf{{Problem Solving Certificate}} -- HackerRank, Nov 2024}}
+   - Use \\resumeAchievementListStart and \\resumeAchievementListEnd (NOT \\resumeSubHeadingListStart).
+   - This is a DEDICATED command that automatically gives bullet points with proper spacing.
+   - DO NOT use \\resumeSubHeadingListStart for achievements. DO NOT use \\resumeItemListStart.
+   - Just use \\resumeAchievementListStart, then \\resumeItem entries, then \\resumeAchievementListEnd.
+   - EXACT structure to copy (no nesting needed):
+     \\resumeAchievementListStart
+       \\resumeItem{{\\textbf{{Certificate/Award Name}} -- Issuing Organization, Date}}
+       \\resumeItem{{\\textbf{{Award Name}} -- Organization, Date}}
+     \\resumeAchievementListEnd
+   - Bold ONLY the certificate/award name. Issuing org and date in normal weight.
+   - Keep each entry to a SINGLE bullet point. No sub-bullets.
+   - The spacing and bullet style will automatically match the experience and projects sections.
 
-8. FORMATTING — MAXIMAL CONTENT DENSITY:
-   - The resume should be EXACTLY 1 page. Use every inch of space.
-   - Tight margins (already set in template). Do NOT add extra vertical spacing.
-   - No wasted space — fill the page with relevant, impactful content.
-   - Use consistent date formatting: "Mon. YYYY -- Mon. YYYY" or "Mon YYYY -- Present".
+═══════════════════════════════════════════════════════════════════
+BOLD USAGE RULES (STRICT — DO NOT OVER-BOLD):
+═══════════════════════════════════════════════════════════════════
+Bold ONLY these elements:
+- Candidate's name (\\textbf{{\\Huge ...}})
+- Section headings (handled by \\section{{}} command automatically)
+- Company names and job titles (in \\resumeSubheading — already bold by template)
+- Project names (\\textbf{{Project Name}} in project heading)
+- Skills category labels (\\textbf{{Languages}}, \\textbf{{Tools}}, etc.)
+- Certificate/award names in achievements
+- At most ONE key metric or result per experience bullet (e.g., \\textbf{{saving \\$1M annually}})
+
+Do NOT bold:
+- Entire bullet points or sentences
+- Technology names inside bullet text
+- Dates, locations, or contact details
+- Summary text
+- Random words for emphasis — if everything is bold, nothing stands out
+
+═══════════════════════════════════════════════════════════════════
+SPACING & FORMATTING RULES (EVEN, CLEAN, PROFESSIONAL):
+═══════════════════════════════════════════════════════════════════
+- The resume MUST be EXACTLY 1 page. Use every inch of space.
+- EVEN SPACING: The vertical space between sections MUST be consistent throughout.
+  Use the template's built-in spacing commands. Do NOT add extra \\vspace manually.
+- Within each section, spacing between entries must also be uniform.
+- Do NOT add extra blank lines or \\vspace between items unless the template does it.
+- If the content is too sparse, add more bullet points to experience entries.
+- If the content overflows, reduce bullets per entry (minimum 2) or trim less relevant entries.
+- Use consistent date formatting throughout: "Mon. YYYY -- Mon. YYYY" or "Mon YYYY -- Present".
+- Tight margins (already set in template). Do NOT modify margin settings.
+
+═══════════════════════════════════════════════════════════════════
+BUZZWORD ELIMINATION (CRITICAL FOR ATS):
+═══════════════════════════════════════════════════════════════════
+Buzzwords are RESUME POISON. They waste space, add no value, and can REDUCE your ATS score.
+Scan the ENTIRE resume and ensure NONE of these appear ANYWHERE (summary, bullets, skills, projects):
+
+FULL BLACKLIST (never use any of these words/phrases):
+- dynamic, passionate, dedicated, innovative, proactive, motivated, driven
+- self-starter, go-getter, team player, people person, hard-working
+- detail-oriented, results-oriented, goal-oriented, solution-oriented
+- think outside the box, synergy, leverage, utilize, facilitate
+- fast learner, quick learner, eager to learn, willing to learn
+- excellent communication skills, strong interpersonal skills
+- problem-solving skills, analytical skills, critical thinking
+- multitasking, organizational skills, time management
+- highly skilled, extensive experience, proven ability
+- responsible for, duties included, tasked with
+
+INSTEAD OF BUZZWORDS, always use:
+- Specific technologies and tools ("Python", "Docker", "PostgreSQL")
+- Quantified achievements ("reduced latency by 35%", "processed 1M+ records")
+- Concrete action verbs ("Engineered", "Deployed", "Architected")
+- Measurable outcomes ("serving 50K+ users", "\\$200K cost savings")
+
+═══════════════════════════════════════════════════════════════════
+WORD REPETITION AVOIDANCE (CRITICAL FOR ATS):
+═══════════════════════════════════════════════════════════════════
+Repetition makes resumes look lazy and can LOWER ATS scores. Follow these rules strictly:
+
+1. ACTION VERB DIVERSITY: Never use the same action verb more than TWICE across the entire resume.
+   - If you've used "Developed" in one bullet, use "Engineered", "Built", "Designed", "Implemented",
+     "Created", "Constructed", "Architected" in other bullets.
+   - Maintain a mental checklist of verbs already used.
+
+2. KEYWORD VARIETY: Use synonyms and alternate forms to avoid stuffing:
+   - Don't write "API" 5 times — alternate with "RESTful services", "endpoints", "web services"
+   - Don't write "built" in every bullet — rotate through action verbs
+   - Skills section keywords do NOT count as repetition (they are meant to be listed there).
+
+3. SENTENCE STRUCTURE VARIETY: Vary bullet point structures:
+   - Mix patterns: "[Verb] [what] using [tech], [result]" and "[Verb] [result] by [method]"
+   - Avoid starting every bullet the same way.
+
+4. DO NOT repeat the same metric pattern:
+   - BAD: "...by 30%", "...by 40%", "...by 25%", "...by 50%" (same pattern every bullet)
+   - GOOD: "...by 30%", "...serving 10K+ users", "...saving \\$50K annually", "...processing 2M records/day"
+
+═══════════════════════════════════════════════════════════════════
+ATS SCORE MAXIMIZATION CHECKLIST:
+═══════════════════════════════════════════════════════════════════
+Before finalizing, mentally verify ALL of the following:
+[ ] Summary contains 3-5 JD keywords naturally woven in
+[ ] Every experience bullet has a quantified metric
+[ ] Skills section contains ALL JD-mentioned technologies
+[ ] ZERO buzzwords anywhere in the resume (check against the full blacklist above)
+[ ] No action verb is used more than twice across the entire resume
+[ ] No word or phrase is unnecessarily repeated
+[ ] Metric patterns are varied (not all "by X%")
+[ ] Projects showcase JD-relevant tech stacks
+[ ] Section headings are standard ATS-readable names (SUMMARY, EDUCATION, EXPERIENCE, PROJECTS, SKILLS, ACHIEVEMENTS & CERTIFICATIONS)
+[ ] EXPERIENCE section is OMITTED if the candidate has no work experience
+[ ] No tables, columns, or graphics that could confuse ATS parsers (except the template's tabular* for alignment)
+[ ] Font is Times New Roman (mathptmx package)
+[ ] Bold usage is disciplined — only headings, names, and key metrics
+[ ] All keywords from the provided keyword list appear at least once in the resume
 
 ═══════════════════════════════════════════════════════════════════
 CANDIDATE'S INFORMATION:
